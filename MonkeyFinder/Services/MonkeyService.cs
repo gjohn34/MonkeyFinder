@@ -19,8 +19,8 @@ public class MonkeyService
         if (monkeyList.Count > 0)
             return monkeyList;
 
-
-        HttpResponseMessage response = await httpClient.GetAsync("montemagno.com/monkeys.json");
+        // Android emulator => Cold Boot emulator to reset ssl certifcates
+        HttpResponseMessage response = await httpClient.GetAsync("https://www.montemagno.com/monkeys.json");
 
         if (response.IsSuccessStatusCode)
         {

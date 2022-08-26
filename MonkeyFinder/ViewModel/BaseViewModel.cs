@@ -6,8 +6,8 @@ namespace MonkeyFinder.ViewModel;
 public partial class BaseViewModel : ObservableObject
 {
     // Observable pre-generated code
-    [ObservableProperty]
     // Triggers update w/ NotifyProp - pre-generated code
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     bool isBusy;
     [ObservableProperty]
