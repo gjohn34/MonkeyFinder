@@ -1,5 +1,6 @@
 ﻿namespace MonkeyFinder.ViewModel;
 
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MonkeyFinder.Services;
 
@@ -9,16 +10,63 @@ public partial class MonkeysViewModel : BaseViewModel
     MonkeyService monkeyService;
     public ObservableCollection<Monkey> Monkeys { get; } = new ObservableCollection<Monkey>();
     // Dependency Injection, set in builder
-    public MonkeysViewModel(MonkeyService monkeyService)
+    IConnectivity connectivity;
+    IGeolocation geolocation;
+
+    public MonkeysViewModel(MonkeyService monkeyService, IConnectivity connectivity, IGeolocation geolocation)
     {
         Title = "MONKE";
         this.monkeyService = monkeyService;
+        this.connectivity = connectivity;
+        this.geolocation = geolocation;
+    }
+
+    [ObservableProperty]
+    bool isRefreshing;
+
+    [RelayCommand]
+    async Task GetClosestMonkeyAsync()
+    {
+        if (IsBusy || Monkeys.Count == 0) return;
+
+        try
+        {
+            Location location = await geolocation.GetLastKnownLocationAsync();
+            if (location is null)
+            {
+                location = await geolocation.GetLocationAsync(
+                    new GeolocationRequest
+                    {
+                        DesiredAccuracy = GeolocationAccuracy.Low,
+                        Timeout = TimeSpan.FromSeconds(30)
+                    });
+            }
+
+            if (location is null) return;
+
+            Monkey first = Monkeys.OrderBy(m => location.CalculateDistance(m.Latitude, m.Longitude, DistanceUnits.Kilometers)).FirstOrDefault();
+
+            if (first is null) return;
+            await Shell.Current.DisplayAlert("Closest", $"{first.Name} in {first.Location}", "OK");
+
+        }
+        catch (Exception ex)
+        {
+            await Shell.Current.DisplayAlert("GeoLocation", "Cannot GeoLocate", "OK");
+        }
+
     }
 
     [RelayCommand]
     async Task GetMonkeysAsync()
     {
         if (IsBusy) return;
+
+        if (connectivity.NetworkAccess != NetworkAccess.Internet)
+        {
+            await Shell.Current.DisplayAlert("Net Issue", "Check your internet works", "OK");
+            return;
+        }
 
         try
         {
@@ -36,11 +84,12 @@ public partial class MonkeysViewModel : BaseViewModel
         {
             Debug.WriteLine(ex);
             // Change this to interface to display. 
-            await Shell.Current.DisplayAlert("Error", "Cannot Fetch", "Cancel");
+            await Shell.Current.DisplayAlert("Error", "Cannot Fetch", "OK");
         }
         finally
         {
             IsBusy = false;
+            IsRefreshing = false;
         }
     }
 
